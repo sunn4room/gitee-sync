@@ -12,7 +12,10 @@ import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
     throw new Error("cannot download browser")
   })
 
-  const browser = await launch({ headless: "new" }).catch(() => {
+  const browser = await launch({
+    headless: false,
+    args: ['--lang=zh-CN'],
+  }).catch(() => {
     throw new Error("cannot launch browser")
   })
 
@@ -23,7 +26,7 @@ import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
   }
 
   try {
-    const login_page = await goto("https://gitee.com/login")
+    const login_page = await goto("https://gitee.com/login#lang=zh-CN")
     const username_selector = "#user_login"
     const password_selector = "#user_password"
     const login_btn_selector = "input[name=commit]"
@@ -65,11 +68,13 @@ import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
     }
   }
 
+  const promises: Promise<void>[] = []
   repositories.split("\n").forEach((repo) => {
     if (repo.indexOf("/") >= 0) {
-      sync(repo)
+      promises.push(sync(repo))
     }
   })
+  await Promise.all(promises)
 
   await browser.close()
 
