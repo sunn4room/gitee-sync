@@ -1,4 +1,4 @@
-import { info, warning, error, getInput } from "@actions/core"
+import { info, warning, setFailed, getInput } from "@actions/core"
 import { launch } from "puppeteer"
 import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
 
@@ -13,7 +13,7 @@ import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
   })
 
   const browser = await launch({
-    headless: false,
+    headless: "new",
     args: ['--lang=zh-CN'],
   }).catch(() => {
     throw new Error("cannot launch browser")
@@ -79,5 +79,5 @@ import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
   await browser.close()
 
 })().catch((e: Error) => {
-  error(e.message)
+  setFailed(e)
 })
