@@ -1,0 +1,17 @@
+name: Gitee Sync
+on:
+  push:
+  schedule:
+    - cron: '0 16 * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: sync
+        uses: sunn4room/gitee-sync@main
+        with:
+          username: snrm
+          password: ${{ secrets.PASSWORD }}
+          repositories: |
+            sunn4github/lazy.nvim

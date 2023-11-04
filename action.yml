@@ -1,24 +1,12 @@
-name: 'The name of your action here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
-
-# Add your action's branding here. This will appear on the GitHub Marketplace.
-branding:
-  icon: 'heart'
-  color: 'red'
-
-# Define your inputs here.
+name: Gitee Sync
+author: sunn4room
 inputs:
-  milliseconds:
-    description: 'Your input description here'
+  username:
     required: true
-    default: '1000'
-
-# Define your outputs here.
-outputs:
-  time:
-    description: 'Your output description here'
-
+  password:
+    required: true
+  repositories:
+    required: true
 runs:
   using: node20
   main: dist/index.js
