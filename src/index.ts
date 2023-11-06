@@ -1,4 +1,4 @@
-import { info, notice, setFailed, getInput, getMultilineInput } from "@actions/core"
+import { info, setFailed, getInput, getMultilineInput } from "@actions/core"
 import { launch } from "puppeteer"
 import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
 import { get as urlget } from "node:https"
@@ -68,9 +68,9 @@ import { get as urlget } from "node:https"
         })
       ])
       await repo_page.close()
-      notice(repo + " succeeded")
-    } catch {
-      setFailed(repo + " failed")
+      info(repo + " succeeded")
+    } catch(e) {
+      setFailed(repo + " failed: " + (e as Error).toString())
     }
   }
 
