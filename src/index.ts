@@ -58,8 +58,10 @@ import { get as urlget } from "node:https"
       const sync_btn_selector = "#btn-sync-from-github"
       const confirm_btn_selector = "#modal-sync-from-github > .actions > .orange.ok"
       await repo_page.waitForSelector(sync_btn_selector)
+      info(repo + " opened")
       await repo_page.click(sync_btn_selector)
       await repo_page.waitForSelector(confirm_btn_selector)
+      info(repo + " clicked")
       await Promise.all([
         repo_page.waitForNavigation({ waitUntil: "domcontentloaded" }),
         repo_page.evaluateHandle(() => {
