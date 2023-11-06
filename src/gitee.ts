@@ -5,7 +5,11 @@ import { Browser } from 'puppeteer'
 let client: HttpClient | undefined
 
 function get_client(): HttpClient {
-  return client ? client : new HttpClient()
+  if (client) { return client }
+  else {
+    client = new HttpClient()
+    return client
+  }
 }
 
 export async function get_org_repos(org: string, token: string = ''): Promise<Array<string>> {
