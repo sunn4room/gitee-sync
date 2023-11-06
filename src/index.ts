@@ -75,7 +75,7 @@ import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
   const promises: Promise<void>[] = []
   for (const repo of repositories) {
     promises.push(sync(repo))
-    await new Promise(r => setTimeout(r, 5000))
+    //await new Promise(r => setTimeout(r, 5000))
   }
   await Promise.all(promises)
 
