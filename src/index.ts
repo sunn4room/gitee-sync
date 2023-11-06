@@ -113,12 +113,9 @@ import { get as urlget } from "node:https"
   repos.forEach(repo => info(repo))
   endGroup()
 
-  const promises: Promise<void>[] = []
   for (const repo of repos) {
-    promises.push(sync(repo))
-    await new Promise(r => setTimeout(r, 10000))
+    await sync(repo)
   }
-  await Promise.all(promises)
 
   await browser.close()
 
