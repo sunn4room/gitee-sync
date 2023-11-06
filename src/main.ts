@@ -1,9 +1,35 @@
 import { get_org_repos, login, sync_repo } from './gitee'
 import { get_browser } from './browser'
 import { getInput, getMultilineInput, setFailed, info, startGroup, endGroup } from '@actions/core'
+import { Browser } from 'puppeteer'
 
 function handle_error(e: any): void {
   setFailed(e instanceof Error ? e.message : `Unknow: ${e}`)
+}
+
+async function login1(browser: Browser, username: string, password: string): Promise<void> {
+  try {
+    const login_page = await browser.newPage()
+    await login_page.goto("https://gitee.com/login#lang=zh-CN", { waitUntil: 'domcontentloaded' })
+    const username_selector = "#user_login"
+    const password_selector = "#user_password"
+    const login_btn_selector = "input[name=commit]"
+    await Promise.all([
+      login_page.waitForSelector(username_selector),
+      login_page.waitForSelector(password_selector),
+      login_page.waitForSelector(login_btn_selector)
+    ])
+    await login_page.type(username_selector, username)
+    await login_page.type(password_selector, password)
+    await Promise.all([
+      login_page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      login_page.click(login_btn_selector)
+    ])
+    await login_page.close()
+    info("gitee logged in")
+  } catch {
+    throw new Error("cannot login")
+  }
 }
 
 export default async function(): Promise<void> {
@@ -38,28 +64,7 @@ export default async function(): Promise<void> {
     //
     // await browser.close()
 
-  try {
-    const login_page = await browser.newPage()
-    await login_page.goto("https://gitee.com/login#lang=zh-CN", { waitUntil: 'domcontentloaded' })
-    const username_selector = "#user_login"
-    const password_selector = "#user_password"
-    const login_btn_selector = "input[name=commit]"
-    await Promise.all([
-      login_page.waitForSelector(username_selector),
-      login_page.waitForSelector(password_selector),
-      login_page.waitForSelector(login_btn_selector)
-    ])
-    await login_page.type(username_selector, username)
-    await login_page.type(password_selector, password)
-    await Promise.all([
-      login_page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
-      login_page.click(login_btn_selector)
-    ])
-    await login_page.close()
-    info("gitee logined")
-  } catch {
-    throw new Error("cannot login")
-  }
+    await login1(browser, username, password)
 
   const sync = async (repo: string) => {
     try {
