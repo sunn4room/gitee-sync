@@ -39,7 +39,7 @@ export default async function(): Promise<void> {
     // await browser.close()
   const goto = async (url: string) => {
     const page = await browser.newPage()
-    await page.goto(url)
+    await page.goto(url, { waitUntil: 'domcontentloaded' })
     return page
   }
 
@@ -56,7 +56,7 @@ export default async function(): Promise<void> {
     await login_page.type(username_selector, username)
     await login_page.type(password_selector, password)
     await Promise.all([
-      login_page.waitForNavigation(),
+      login_page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
       login_page.click(login_btn_selector)
     ])
     await login_page.close()
@@ -74,7 +74,7 @@ export default async function(): Promise<void> {
       await repo_page.click(sync_btn_selector)
       await repo_page.waitForSelector(confirm_btn_selector)
       await Promise.all([
-        repo_page.waitForNavigation(),
+        repo_page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
         repo_page.evaluateHandle(() => {
           const confirm = document.querySelector("#modal-sync-from-github > .actions > .orange.ok") as any
           confirm.click()
