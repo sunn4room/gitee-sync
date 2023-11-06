@@ -3,7 +3,7 @@ description: Gitee Sync with Puppeteer
 author: sunn4room
 branding:
   icon: upload-cloud
-  color: gray-red
+  color: red
 inputs:
   username:
     required: true
