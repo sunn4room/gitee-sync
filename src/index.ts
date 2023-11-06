@@ -1,6 +1,7 @@
-import { info, setFailed, getInput, getMultilineInput } from "@actions/core"
+import { info, startGroup, endGroup, setFailed, getInput, getMultilineInput } from "@actions/core"
 import { launch } from "puppeteer"
 import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
+import { get as urlget } from "node:https"
 
 (async () => {
 
@@ -51,7 +52,6 @@ import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
 
   const sync = async (repo: string) => {
     try {
-      info(repo + " ...")
       const repo_page = await goto("https://gitee.com/" + repo)
       const sync_btn_selector = "#btn-sync-from-github"
       const confirm_btn_selector = "#modal-sync-from-github > .actions > .orange.ok"
@@ -67,15 +67,56 @@ import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
       ])
       await repo_page.close()
       info(repo + " succeeded")
-    } catch {
-      setFailed(repo + " failed")
+    } catch(e) {
+      setFailed(repo + " failed: " + (e as Error).toString())
     }
   }
 
-  const promises: Promise<void>[] = []
+  const repos: Array<string> = []
   for (const repo of repositories) {
+    if (repo.indexOf("/") >= 0) {
+      repos.push(repo)
+    } else {
+      let count = 0
+      while (true) {
+        count += 1
+        let flag = false
+        await new Promise<void>(resolve => {
+          urlget(
+            "https://gitee.com/api/v5/orgs/sunn4github/repos?page=" + count,
+            res => {
+              let data = ''
+              res.on('data', d => data += d)
+              res.on('end', () => {
+                const list = JSON.parse(data)
+                if (list.length == 0) {
+                  flag = true
+                } else {
+                  list.forEach((o: any) => {
+                    repos.push(o.full_name)
+                  })
+                }
+                resolve()
+              })
+            }
+          ).on("error", () => {
+            setFailed(`Cannot get response from ${repo}[${count}]`)
+            flag = true
+            resolve()
+          })
+        })
+        if (flag) break
+      }
+    }
+  }
+  startGroup("all repos here")
+  repos.forEach(repo => info(repo))
+  endGroup()
+
+  const promises: Promise<void>[] = []
+  for (const repo of repos) {
     promises.push(sync(repo))
-    //await new Promise(r => setTimeout(r, 5000))
+    await new Promise(r => setTimeout(r, 10000))
   }
   await Promise.all(promises)
 
