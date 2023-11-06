@@ -36,7 +36,7 @@ export async function get_org_repos(org: string, token: string = ''): Promise<Ar
 export async function login(browser: Browser, username: string, password: string): Promise<void> {
   try {
     const login_page = await browser.newPage()
-    await login_page.goto('https://gitee.com/login', { waitUntil: 'domcontentloaded' })
+    await login_page.goto('https://gitee.com/login')
     const username_selector = '#user_login'
     const password_selector = '#user_password'
     const login_btn_selector = 'input[name=commit]'
@@ -48,7 +48,7 @@ export async function login(browser: Browser, username: string, password: string
     await login_page.type(username_selector, username)
     await login_page.type(password_selector, password)
     await Promise.all([
-      login_page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      login_page.waitForNavigation(),
       login_page.click(login_btn_selector)
     ])
     await login_page.close()
@@ -61,14 +61,14 @@ export async function login(browser: Browser, username: string, password: string
 export async function sync_repo(browser: Browser, repo: string): Promise<void> {
   try {
     const repo_page = await browser.newPage()
-    await repo_page.goto(`https://gitee.com/${repo}`, { waitUntil: 'domcontentloaded' })
+    await repo_page.goto(`https://gitee.com/${repo}`)
     const sync_btn_selector = '#btn-sync-from-github'
     const confirm_btn_selector = '#modal-sync-from-github > .actions > .orange.ok'
     await repo_page.waitForSelector(sync_btn_selector)
     await repo_page.click(sync_btn_selector)
     await repo_page.waitForSelector(confirm_btn_selector)
     await Promise.all([
-      repo_page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      repo_page.waitForNavigation(),
       repo_page.evaluateHandle(() => {
         const confirm = document.querySelector('#modal-sync-from-github > .actions > .orange.ok') as any
         confirm.click()

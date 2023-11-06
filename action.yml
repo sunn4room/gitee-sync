@@ -1,4 +1,4 @@
-name: Gitee Sync
+name: Gitee Sync with Puppeteer
 author: sunn4room
 inputs:
   username:
