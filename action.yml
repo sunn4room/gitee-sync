@@ -1,5 +1,9 @@
 name: Gitee Sync with Puppeteer
+description: Gitee Sync with Puppeteer
 author: sunn4room
+branding:
+  icon: upload-cloud
+  color: gray-red
 inputs:
   username:
     required: true
