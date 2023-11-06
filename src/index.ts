@@ -42,7 +42,7 @@ import { get as urlget } from "node:https"
     await login_page.type(username_selector, username)
     await login_page.type(password_selector, password)
     await Promise.all([
-      login_page.waitForNavigation(),
+      login_page.waitForNavigation({ waitUntil: "domcontentloaded" }),
       login_page.click(login_btn_selector)
     ])
     await login_page.close()
@@ -61,7 +61,7 @@ import { get as urlget } from "node:https"
       await repo_page.click(sync_btn_selector)
       await repo_page.waitForSelector(confirm_btn_selector)
       await Promise.all([
-        repo_page.waitForNavigation(),
+        repo_page.waitForNavigation({ waitUntil: "domcontentloaded" }),
         repo_page.evaluateHandle(() => {
           const confirm = document.querySelector("#modal-sync-from-github > .actions > .orange.ok") as any
           confirm.click()
@@ -161,6 +161,6 @@ import { get as urlget } from "node:https"
 
   await browser.close()
 
-})().catch((e: Error) => {
+})().catch((e) => {
   setFailed(e)
 })
