@@ -1,7 +1,7 @@
 {
   "name": "gitee-sync",
   "description": "Gitee Sync",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "sunn4ovo",
   "engines": {
     "node": ">=20"

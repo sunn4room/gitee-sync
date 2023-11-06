@@ -11,6 +11,7 @@ import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
   await downloadBrowser().catch(() => {
     throw new Error("cannot download browser")
   })
+  info("browser downloaded")
 
   const browser = await launch({
     headless: "new",
@@ -18,10 +19,11 @@ import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
   }).catch(() => {
     throw new Error("cannot launch browser")
   })
+  info("browser launched")
 
-  const goto = async (url: string, until: any = "domcontentloaded") => {
+  const goto = async (url: string) => {
     const page = await browser.newPage()
-    await page.goto(url, { waitUntil: until }).catch(() => {})
+    await page.goto(url)
     return page
   }
 
@@ -38,16 +40,18 @@ import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
     await login_page.type(username_selector, username)
     await login_page.type(password_selector, password)
     await Promise.all([
-      login_page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+      login_page.waitForNavigation(),
       login_page.click(login_btn_selector)
     ])
     await login_page.close()
+    info("gitee logined")
   } catch {
     throw new Error("cannot login")
   }
 
   const sync = async (repo: string) => {
     try {
+      info(repo + " ...")
       const repo_page = await goto("https://gitee.com/" + repo)
       const sync_btn_selector = "#btn-sync-from-github"
       const confirm_btn_selector = "#modal-sync-from-github > .actions > .orange.ok"
@@ -55,70 +59,24 @@ import { downloadBrowser } from "puppeteer/lib/cjs/puppeteer/node/install.js"
       await repo_page.click(sync_btn_selector)
       await repo_page.waitForSelector(confirm_btn_selector)
       await Promise.all([
-        repo_page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+        repo_page.waitForNavigation(),
         repo_page.evaluateHandle(() => {
           const confirm = document.querySelector("#modal-sync-from-github > .actions > .orange.ok") as any
           confirm.click()
         })
       ])
       await repo_page.close()
-      info(repo)
+      info(repo + " succeeded")
     } catch {
-      warning(repo)
-      throw new Error("Please read the warning message")
-    }
-  }
-
-  class LimitPromise {
-    private limit: number
-    private count: number
-    private taskQueue: any[]
-
-    constructor(limit: number) {
-      this.limit = limit
-      this.count = 0
-      this.taskQueue = []
-    }
-
-    private createTask(
-      asyncFn: Function,
-      args: any[],
-      resolve: (value: void) => void,
-      reject: (reason?: any) => void
-    ) {
-      return () => {
-        asyncFn(...args)
-          .then(resolve)
-          .catch(reject)
-          .finally(() => {
-            this.count--
-            if (this.taskQueue.length) {
-              let task = this.taskQueue.shift()
-              task()
-            }
-          })
-
-        this.count++
-      }
-    }
-
-    public call(asyncFn: Function, ...args: any[]) {
-      return new Promise<void>((resolve, reject) => {
-        const task = this.createTask(asyncFn, args, resolve, reject)
-        if (this.count >= this.limit) {
-          this.taskQueue.push(task)
-        } else {
-          task()
-        }
-      })
+      setFailed(repo + " failed")
     }
   }
 
   const promises: Promise<void>[] = []
-  const promise_limiter = new LimitPromise(5)
-  repositories.forEach(async (repo) => {
-    promises.push(promise_limiter.call(sync, repo))
-  })
+  for (const repo of repositories) {
+    promises.push(sync(repo))
+    await new Promise(r => setTimeout(r, 5000))
+  }
   await Promise.all(promises)
 
   await browser.close()
