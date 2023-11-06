@@ -17,8 +17,8 @@ export default async function(): Promise<void> {
       headless: 'new',
     })
 
-    // await login(browser, username, password)
-    //
+    await login(browser, username, password)
+
     // for (const repo of repos) {
     //   if (repo.indexOf('/') >= 0) {
     //     await sync_repo(browser, repo).catch(e => handle_error(e))
@@ -37,37 +37,33 @@ export default async function(): Promise<void> {
     // }
     //
     // await browser.close()
-  const goto = async (url: string) => {
-    const page = await browser.newPage()
-    await page.goto(url, { waitUntil: 'domcontentloaded' })
-    return page
-  }
 
-  try {
-    const login_page = await goto("https://gitee.com/login#lang=zh-CN")
-    const username_selector = "#user_login"
-    const password_selector = "#user_password"
-    const login_btn_selector = "input[name=commit]"
-    await Promise.all([
-      login_page.waitForSelector(username_selector),
-      login_page.waitForSelector(password_selector),
-      login_page.waitForSelector(login_btn_selector)
-    ])
-    await login_page.type(username_selector, username)
-    await login_page.type(password_selector, password)
-    await Promise.all([
-      login_page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
-      login_page.click(login_btn_selector)
-    ])
-    await login_page.close()
-    info("gitee logined")
-  } catch {
-    throw new Error("cannot login")
-  }
+  // try {
+  //   const login_page = await goto("https://gitee.com/login#lang=zh-CN")
+  //   const username_selector = "#user_login"
+  //   const password_selector = "#user_password"
+  //   const login_btn_selector = "input[name=commit]"
+  //   await Promise.all([
+  //     login_page.waitForSelector(username_selector),
+  //     login_page.waitForSelector(password_selector),
+  //     login_page.waitForSelector(login_btn_selector)
+  //   ])
+  //   await login_page.type(username_selector, username)
+  //   await login_page.type(password_selector, password)
+  //   await Promise.all([
+  //     login_page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+  //     login_page.click(login_btn_selector)
+  //   ])
+  //   await login_page.close()
+  //   info("gitee logined")
+  // } catch {
+  //   throw new Error("cannot login")
+  // }
 
   const sync = async (repo: string) => {
     try {
-      const repo_page = await goto("https://gitee.com/" + repo)
+      const repo_page = await browser.newPage()
+      await repo_page.goto("https://gitee.com/" + repo, { waitUntil: 'domcontentloaded' })
       const sync_btn_selector = "#btn-sync-from-github"
       const confirm_btn_selector = "#modal-sync-from-github > .actions > .orange.ok"
       await repo_page.waitForSelector(sync_btn_selector)
