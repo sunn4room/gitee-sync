@@ -1,18 +1,19 @@
 {
   "name": "gitee-sync",
   "description": "Gitee Sync",
-  "version": "1.0.7",
+  "version": "2.0.0",
   "author": "sunn4ovo",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "build": "ncc build src/index.ts",
-    "build:mini": "ncc build src/index.ts -m",
-    "dev": "node dist/index.js"
+    "dev": "node dist/index.js",
+    "all": "pnpm build && pnpm dev"
   },
   "dependencies": {
     "@actions/core": "^1.10.1",
+    "@actions/http-client": "^2.2.0",
     "puppeteer": "^21.5.0"
   },
   "devDependencies": {
