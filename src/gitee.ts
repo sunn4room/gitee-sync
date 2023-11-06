@@ -13,7 +13,7 @@ export async function get_org_repos(org: string, token: string = ''): Promise<Ar
   let count = 1
   while (true) {
     const result = await get_client().get(
-      `https://gitee.com/api/v5/orgs/${org}/repos?type=all&per_page=100&page=${count}&${token ? '&access_token='+token : ''}`,
+      `https://gitee.com/api/v5/orgs/${org}/repos?type=all&per_page=100&page=${count}${token ? '&access_token='+token : ''}`,
       {
         'content-type': 'application/json',
         'charset': 'UTF-8',

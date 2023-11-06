@@ -87,19 +87,19 @@ export default async function(): Promise<void> {
     }
   }
 
-  const repos: Array<string> = []
+  const reposs: Array<string> = []
   for (const repo of repositories) {
     if (repo.indexOf("/") >= 0) {
-      repos.push(repo)
+      reposs.push(repo)
     } else {
-      repos.concat(await get_org_repos(repo))
+      (await get_org_repos(repo)).forEach(i => reposs.push(i))
     }
   }
   startGroup("all repos here")
-  repos.forEach(repo => info(repo))
+  reposs.forEach(repo => info(repo))
   endGroup()
 
-  for (const repo of repos) {
+  for (const repo of reposs) {
     await sync(repo)
   }
 
