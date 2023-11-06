@@ -14,5 +14,4 @@ jobs:
           username: snrm
           password: ${{ secrets.PASSWORD }}
           repositories: |
-            sunn4github/lazy.nvim
-            sunn4github/which-key.nvim
+            sunn4github
