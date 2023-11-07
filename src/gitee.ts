@@ -38,49 +38,61 @@ export async function get_org_repos(org: string, token: string = ''): Promise<Ar
 }
 
 export async function login(browser: Browser, username: string, password: string): Promise<void> {
+  const login_page = await browser.newPage()
   try {
-    const login_page = await browser.newPage()
-    await login_page.goto('https://gitee.com/login#lang=zh-CN', { waitUntil: 'domcontentloaded' })
+    await login_page.goto(
+      'https://gitee.com/login#lang=zh-CN',
+      { timeout: 10000, waitUntil: 'domcontentloaded' }
+    ).catch(() => { throw new Error('Cannot open url') })
     const username_selector = '#user_login'
     const password_selector = '#user_password'
     const login_btn_selector = 'input[name=commit]'
     await Promise.all([
-      login_page.waitForSelector(username_selector),
-      login_page.waitForSelector(password_selector),
-      login_page.waitForSelector(login_btn_selector)
-    ])
+      login_page.waitForSelector(username_selector, { timeout: 10000 }),
+      login_page.waitForSelector(password_selector, { timeout: 10000 }),
+      login_page.waitForSelector(login_btn_selector, { timeout: 10000 })
+    ]).catch(() => { throw new Error('Cannot find login elements') })
     await login_page.type(username_selector, username)
     await login_page.type(password_selector, password)
     await Promise.all([
-      login_page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      login_page.waitForNavigation({ timeout: 10000, waitUntil: 'domcontentloaded' }),
       login_page.click(login_btn_selector)
-    ])
-    await login_page.close()
+    ]).catch(() => { throw new Error('No response after submit') })
     info('gitee logged in')
-  } catch {
-    throw new Error('Cannot login gitee')
+  } catch(e) {
+    throw new Error(`Cannot login gitee${e instanceof Error ? ': '+e.message : ''}`)
+  } finally {
+    await login_page.close()
   }
 }
 
 export async function sync_repo(browser: Browser, repo: string): Promise<void> {
+  const repo_page = await browser.newPage()
   try {
-    const repo_page = await browser.newPage()
-    await repo_page.goto(`https://gitee.com/${repo}`, { waitUntil: 'domcontentloaded' })
+    await repo_page.goto(
+      `https://gitee.com/${repo}`,
+      { timeout: 10000, waitUntil: 'domcontentloaded' }
+    ).catch(() => { throw new Error('Cannot open url') })
     const sync_btn_selector = '#btn-sync-from-github'
     const confirm_btn_selector = '#modal-sync-from-github > .actions > .orange.ok'
-    await repo_page.waitForSelector(sync_btn_selector)
+    await repo_page.waitForSelector(
+      sync_btn_selector, { timeout: 10000 }
+    ).catch(() => { throw new Error('Cannot find sync element') })
     await repo_page.click(sync_btn_selector)
-    await repo_page.waitForSelector(confirm_btn_selector)
+    await repo_page.waitForSelector(
+      confirm_btn_selector, { timeout: 10000 }
+    ).catch(() => { throw new Error('Cannot find confirm element') })
     await Promise.all([
-      repo_page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      repo_page.waitForNavigation({ timeout: 60000, waitUntil: 'domcontentloaded' }),
       repo_page.evaluateHandle(() => {
         const confirm = document.querySelector('#modal-sync-from-github > .actions > .orange.ok') as any
         confirm.click()
       })
-    ])
-    await repo_page.close()
+    ]).catch(() => { throw new Error('No response after confirm') })
     info(`"${repo}" synced`)
-  } catch {
-    throw new Error(`Cannot sync "${repo}"`)
+  } catch(e) {
+    throw new Error(`Cannot sync "${repo}"${e instanceof Error ? ': '+e.message : ''}`)
+  } finally {
+    await repo_page.close()
   }
 }
