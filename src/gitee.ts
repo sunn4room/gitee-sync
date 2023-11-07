@@ -44,6 +44,7 @@ export async function login(browser: Browser, username: string, password: string
       'https://gitee.com/login#lang=zh-CN',
       { timeout: 10000, waitUntil: 'domcontentloaded' }
     ).catch(() => { throw new Error('Cannot open url') })
+    await login_page.waitForTimeout(1000)
     const username_selector = '#user_login'
     const password_selector = '#user_password'
     const login_btn_selector = 'input[name=commit]'
@@ -52,8 +53,10 @@ export async function login(browser: Browser, username: string, password: string
       login_page.waitForSelector(password_selector, { timeout: 10000 }),
       login_page.waitForSelector(login_btn_selector, { timeout: 10000 })
     ]).catch(() => { throw new Error('Cannot find login elements') })
-    await login_page.type(username_selector, username)
-    await login_page.type(password_selector, password)
+    await login_page.type(username_selector, username, { delay: 200 })
+    await login_page.waitForTimeout(1000)
+    await login_page.type(password_selector, password, { delay: 200 })
+    await login_page.waitForTimeout(1000)
     await Promise.all([
       login_page.waitForNavigation({ timeout: 10000, waitUntil: 'domcontentloaded' }),
       login_page.click(login_btn_selector)
@@ -73,15 +76,18 @@ export async function sync_repo(browser: Browser, repo: string): Promise<void> {
       `https://gitee.com/${repo}`,
       { timeout: 10000, waitUntil: 'domcontentloaded' }
     ).catch(() => { throw new Error('Cannot open url') })
+    await repo_page.waitForTimeout(1000)
     const sync_btn_selector = '#btn-sync-from-github'
     const confirm_btn_selector = '#modal-sync-from-github > .actions > .orange.ok'
     await repo_page.waitForSelector(
       sync_btn_selector, { timeout: 10000 }
     ).catch(() => { throw new Error('Cannot find sync element') })
     await repo_page.click(sync_btn_selector)
+    await repo_page.waitForTimeout(1000)
     await repo_page.waitForSelector(
       confirm_btn_selector, { timeout: 10000 }
     ).catch(() => { throw new Error('Cannot find confirm element') })
+    await repo_page.waitForTimeout(1000)
     await Promise.all([
       repo_page.waitForNavigation({ timeout: 60000, waitUntil: 'domcontentloaded' }),
       repo_page.evaluateHandle(() => {
