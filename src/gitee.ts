@@ -1,6 +1,141 @@
 import { info } from '@actions/core'
 import { HttpClient } from '@actions/http-client'
-import { Browser } from 'puppeteer'
+import { Browser, Page } from 'puppeteer'
+
+class Stage {
+  name: string
+  constructor(name: string) {
+    this.name = name
+  }
+}
+
+export class Gitee {
+  #browser: Browser
+  #maxPage: number
+  #count: number
+  #tasks: Array<(page: Page) => Promise<void>>
+
+  constructor(browser: Browser, maxPage?: number) {
+    this.#browser = browser
+    this.#maxPage = maxPage || 8
+    this.#count = 0
+    this.#tasks = []
+  }
+
+  async init(username: string, password: string) {
+    const page = await this.#newpage()
+    try {
+      const url = 'https://gitee.com/login#lang=zh-CN'
+      const username_selector = '#user_login'
+      const password_selector = '#user_password'
+      const commit_selector = 'input[name=commit]'
+      await this.#goto(page, url, username_selector, password_selector, commit_selector)
+        .catch(() => { throw new Stage('open url') })
+      await this.#type(page, username_selector, username)
+        .catch(() => { throw new Stage(`type into username input frame`) })
+      await this.#type(page, password_selector, password)
+        .catch(() => { throw new Stage(`type into password input frame`) })
+      await this.#click(page, commit_selector)
+        .catch(() => { throw new Stage(`commit username and password`) })
+      info('gitee logged in')
+    } catch(e) {
+      if (e instanceof Stage) {
+        throw new Error(`Cannot login gitee: ${e.name}`)
+      } else {
+        throw e
+      }
+    } finally {
+      await page.close().catch()
+    }
+  }
+
+  async sync(repo: string) {
+    if (this.#count >= this.#maxPage) {
+      await new Promise((res, rej) => {
+        this.#tasks.push((page: Page) => {
+          return this.#do_sync(repo, page).then(res).catch(rej)
+        })
+      })
+    } else {
+      await this.#do_sync(repo)
+    }
+  }
+
+  async #do_sync(repo: string, page?: Page) {
+    this.#count ++
+    if (!page) {
+      page = await this.#newpage()
+    }
+    try {
+      const url = `https://gitee.com/${repo}`
+      const sync_selector = '#btn-sync-from-github'
+      const confirm_selector = '#modal-sync-from-github > .actions > .orange.ok'
+      const loading_selector = '#btn-sync-from-github > img.loading'
+      await this.#goto(page, url, sync_selector)
+        .catch(() => { throw new Stage('open url') })
+      await this.#click(page, sync_selector, [confirm_selector])
+        .catch(() => { throw new Stage('click sync') })
+      await Promise.all([
+        page.waitForSelector(loading_selector),
+        page.evaluateHandle(() => {
+          const confirm = document.querySelector('#modal-sync-from-github > .actions > .orange.ok') as any
+          confirm.click()
+        })
+      ]).catch(() => { throw new Stage('confirm sync') })
+      info(`"${repo}" synced`)
+    } catch(e) {
+      if (e instanceof Stage) {
+        throw new Error(`Cannot sync "${repo}": ${e.name}`)
+      } else {
+        throw new Error(`Unknow error: ${e}`)
+      }
+    } finally {
+      this.#count --
+      const task = this.#tasks.shift()
+      if (task) {
+        task(page)
+      } else {
+        await page.close().catch()
+      }
+    }
+  }
+
+  async close() {
+    this.#browser.close()
+  }
+
+  async #goto(page: Page, url: string, ...selectors: Array<string>) {
+    const promises: Array<Promise<any>> = selectors.map(
+      selector => page.waitForSelector(selector)
+    )
+    promises.push(page.goto(url, { waitUntil: 'domcontentloaded' }))
+    await Promise.all(promises)
+  }
+
+  async #click(page: Page, selector: string, waitFor?: Array<string>) {
+    const promises: Array<Promise<any>> = []
+    if (waitFor instanceof Array) {
+      for (const selector of waitFor) {
+        promises.push(page.waitForSelector(selector))
+      }
+    } else {
+      promises.push(page.waitForNavigation({ waitUntil: 'domcontentloaded' }))
+    }
+    promises.push(page.click(selector))
+    await Promise.all(promises)
+  }
+
+  async #type(page: Page, selector: string, content: string) {
+    await page.type(selector, content)
+  }
+
+  async #newpage() {
+    const page = await this.#browser.newPage()
+    page.setDefaultNavigationTimeout(10000)
+    page.setDefaultTimeout(10000)
+    return page
+  }
+}
 
 let client: HttpClient | undefined
 
@@ -12,8 +147,7 @@ function get_client(): HttpClient {
   }
 }
 
-export async function get_org_repos(org: string, token: string = ''): Promise<Array<string>> {
-  const repos: Array<string> = []
+export async function* get_org_repos(org: string, token: string = '') {
   let count = 1
   while (true) {
     const result = await get_client().get(
@@ -24,7 +158,7 @@ export async function get_org_repos(org: string, token: string = ''): Promise<Ar
       }
     )
     if (!result.message.statusCode || result.message.statusCode >= 400) {
-      throw new Error(`Cannot get repos from organization "${org}"`)
+      break
     }
     const data: Array<{path: string}> = JSON.parse(await result.readBody())
     if (data.length == 0) {
@@ -32,73 +166,8 @@ export async function get_org_repos(org: string, token: string = ''): Promise<Ar
     } else {
       count += 1
     }
-    data.forEach(obj => repos.push(`${org}/${obj.path}`))
-  }
-  return repos
-}
-
-export async function login(browser: Browser, username: string, password: string): Promise<void> {
-  const login_page = await browser.newPage()
-  try {
-    await login_page.goto(
-      'https://gitee.com/login#lang=zh-CN',
-      { timeout: 10000, waitUntil: 'domcontentloaded' }
-    ).catch(() => { throw new Error('Cannot open url') })
-    await login_page.waitForTimeout(1000)
-    const username_selector = '#user_login'
-    const password_selector = '#user_password'
-    const login_btn_selector = 'input[name=commit]'
-    await Promise.all([
-      login_page.waitForSelector(username_selector, { timeout: 10000 }),
-      login_page.waitForSelector(password_selector, { timeout: 10000 }),
-      login_page.waitForSelector(login_btn_selector, { timeout: 10000 })
-    ]).catch(() => { throw new Error('Cannot find login elements') })
-    await login_page.type(username_selector, username, { delay: 200 })
-    await login_page.waitForTimeout(1000)
-    await login_page.type(password_selector, password, { delay: 200 })
-    await login_page.waitForTimeout(1000)
-    await Promise.all([
-      login_page.waitForNavigation({ timeout: 10000, waitUntil: 'domcontentloaded' }),
-      login_page.click(login_btn_selector)
-    ]).catch(() => { throw new Error('No response after submit') })
-    info('gitee logged in')
-  } catch(e) {
-    throw new Error(`Cannot login gitee${e instanceof Error ? ': '+e.message : ''}`)
-  } finally {
-    await login_page.close()
-  }
-}
-
-export async function sync_repo(browser: Browser, repo: string): Promise<void> {
-  const repo_page = await browser.newPage()
-  try {
-    await repo_page.goto(
-      `https://gitee.com/${repo}`,
-      { timeout: 10000, waitUntil: 'domcontentloaded' }
-    ).catch(() => { throw new Error('Cannot open url') })
-    await repo_page.waitForTimeout(1000)
-    const sync_btn_selector = '#btn-sync-from-github'
-    const confirm_btn_selector = '#modal-sync-from-github > .actions > .orange.ok'
-    await repo_page.waitForSelector(
-      sync_btn_selector, { timeout: 10000 }
-    ).catch(() => { throw new Error('Cannot find sync element') })
-    await repo_page.click(sync_btn_selector)
-    await repo_page.waitForTimeout(1000)
-    await repo_page.waitForSelector(
-      confirm_btn_selector, { timeout: 10000 }
-    ).catch(() => { throw new Error('Cannot find confirm element') })
-    await repo_page.waitForTimeout(1000)
-    await Promise.all([
-      repo_page.waitForNavigation({ timeout: 60000, waitUntil: 'domcontentloaded' }),
-      repo_page.evaluateHandle(() => {
-        const confirm = document.querySelector('#modal-sync-from-github > .actions > .orange.ok') as any
-        confirm.click()
-      })
-    ]).catch(() => { throw new Error('No response after confirm') })
-    info(`"${repo}" synced`)
-  } catch(e) {
-    throw new Error(`Cannot sync "${repo}"${e instanceof Error ? ': '+e.message : ''}`)
-  } finally {
-    await repo_page.close()
+    for (const obj of data) {
+      yield `${org}/${obj.path}`
+    }
   }
 }

@@ -1,6 +1,7 @@
-import { get_org_repos, login, sync_repo } from './gitee'
-import { get_browser } from './browser'
+import { Gitee, get_org_repos } from './gitee'
 import { getInput, getMultilineInput, setFailed } from '@actions/core'
+import { launch } from 'puppeteer'
+import { downloadBrowser } from 'puppeteer/lib/cjs/puppeteer/node/install.js'
 
 function handle_error(e: any): void {
   setFailed(e instanceof Error ? e.message : `Unknow: ${e}`)
@@ -14,31 +15,31 @@ export default async function(): Promise<void> {
     const token = getInput('token', { required: false })
     const repos = getMultilineInput('repositories', { required: true })
 
-    const browser = await get_browser({
-      headless: 'new',
-      args: ["--lang=zh-CN"],
-    })
+    await downloadBrowser()
+      .catch(() => { throw new Error('Cannot download browser') })
+    const browser = await launch({ headless: 'new', args: ["--lang=zh-CN"] })
+      .catch(() => { throw new Error('Cannot launch browser') })
+    const gitee = new Gitee(browser)
 
-    await login(browser, username, password)
+    try {
+      await gitee.init(username, password)
 
-    for (const repo of repos) {
-      if (repo.indexOf('/') >= 0) {
-        await sync_repo(browser, repo).catch(e => handle_error(e))
-      } else {
-        let org_repos: Array<string>
-        try {
-          org_repos = await get_org_repos(repo, token)
-        } catch(e) {
-          handle_error(e)
-          continue
-        }
-        for (const org_repo of org_repos) {
-          await sync_repo(browser, org_repo).catch(e => handle_error(e))
+      const promises: Array<Promise<void>> = []
+      for (const repo of repos) {
+        if (repo.indexOf('/') >= 0) {
+          promises.push(gitee.sync(repo).catch(e => handle_error(e)))
+        } else {
+          for await (const org_repo of get_org_repos(repo, token)) {
+            promises.push(gitee.sync(org_repo).catch(e => handle_error(e)))
+          }
         }
       }
+      await Promise.all(promises)
+    } catch(e) {
+      handle_error(e)
+    } finally {
+      await gitee.close().catch()
     }
-
-    await browser.close()
 
   } catch(e) {
     handle_error(e)
