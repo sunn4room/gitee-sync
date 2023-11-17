@@ -1,7 +1,7 @@
 {
   "name": "gitee-sync",
   "description": "Gitee Sync",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "author": "sunn4ovo",
   "engines": {
     "node": ">=20"
@@ -18,7 +18,13 @@
   },
   "devDependencies": {
     "@types/node": "^20.8.10",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
     "@vercel/ncc": "^0.38.1",
+    "eslint": "^8.53.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "prettier": "^3.0.3",
     "typescript": "^5.2.2"
   }
 }

@@ -13,7 +13,7 @@ jobs:
       - name: sync
         uses: sunn4room/gitee-sync@main
         with:
-          username: snrm
+          username: sunn4room
           password: ${{ secrets.PASSWORD }}
           repositories: |
             sunn4github
