@@ -2,11 +2,15 @@ import { info } from '@actions/core'
 import { HttpClient } from '@actions/http-client'
 import { Browser, Page } from 'puppeteer'
 
-class Stage {
-  name: string
-  constructor(name: string) {
-    this.name = name
+async function retry<T>(fn: () => Promise<T>, err: string): Promise<T> {
+  for (let i = 0; i < 5; i ++) {
+    try {
+      return await fn()
+    } catch {
+      /* empty */
+    }
   }
+  throw new Error(err)
 }
 
 export class Gitee {
@@ -17,46 +21,34 @@ export class Gitee {
 
   constructor(browser: Browser, maxPage?: number) {
     this.#browser = browser
-    this.#maxPage = maxPage || 8
+    this.#maxPage = maxPage || 4
     this.#count = 0
     this.#tasks = []
   }
 
   async init(username: string, password: string) {
-    const page = await this.#newpage()
-    try {
-      const url = 'https://gitee.com/login#lang=zh-CN'
-      const username_selector = '#user_login'
-      const password_selector = '#user_password'
-      const commit_selector = 'input[name=commit]'
-      await this.#goto(
-        page,
-        url,
-        username_selector,
-        password_selector,
-        commit_selector,
-      ).catch(() => {
-        throw new Stage('open url')
-      })
-      await this.#type(page, username_selector, username).catch(() => {
-        throw new Stage(`type into username input frame`)
-      })
-      await this.#type(page, password_selector, password).catch(() => {
-        throw new Stage(`type into password input frame`)
-      })
-      await this.#click(page, commit_selector).catch(() => {
-        throw new Stage(`commit username and password`)
-      })
-      info('gitee logged in')
-    } catch (e) {
-      if (e instanceof Stage) {
-        throw new Error(`Cannot login gitee: ${e.name}`)
-      } else {
-        throw e
+    await retry(async () => {
+      const page = await this.#newpage()
+      try {
+        const url = 'https://gitee.com/login#lang=zh-CN'
+        const username_selector = '#user_login'
+        const password_selector = '#user_password'
+        const commit_selector = 'input[name=commit]'
+        await this.#goto(
+          page,
+          url,
+          username_selector,
+          password_selector,
+          commit_selector,
+        )
+        await this.#type(page, username_selector, username)
+        await this.#type(page, password_selector, password)
+        await this.#click(page, commit_selector)
+        info('gitee logged in')
+      } finally {
+        await page.close().catch()
       }
-    } finally {
-      await page.close().catch()
-    }
+    }, 'Cannot log in')
   }
 
   async sync(repo: string) {
@@ -72,45 +64,36 @@ export class Gitee {
   }
 
   async #do_sync(repo: string) {
-    this.#count++
-    const page = await this.#newpage()
-    try {
-      const url = `https://gitee.com/${repo}`
-      const sync_selector = '#btn-sync-from-github'
-      const confirm_selector = '#modal-sync-from-github > .actions > .orange.ok'
-      const loading_selector = '#btn-sync-from-github > img.loading'
-      await this.#goto(page, url, sync_selector).catch(() => {
-        throw new Stage('open url')
-      })
-      await this.#click(page, sync_selector, [confirm_selector]).catch(() => {
-        throw new Stage('click sync')
-      })
-      await Promise.all([
-        page.waitForSelector(loading_selector),
-        page.evaluateHandle(() => {
-          const confirm = document.querySelector(
-            '#modal-sync-from-github > .actions > .orange.ok',
-          ) as HTMLDivElement | null
-          if (confirm) confirm.click()
-        }),
-      ]).catch(() => {
-        throw new Stage('confirm sync')
-      })
-      info(`"${repo}" synced`)
-    } catch (e) {
-      if (e instanceof Stage) {
-        throw new Error(`Cannot sync "${repo}": ${e.name}`)
-      } else {
-        throw new Error(`Unknow error: ${e}`)
+    await retry(async () => {
+      this.#count++
+      const page = await this.#newpage()
+      try {
+        const url = `https://gitee.com/${repo}`
+        const sync_selector = '#btn-sync-from-github'
+        const confirm_selector =
+          '#modal-sync-from-github > .actions > .orange.ok'
+        const loading_selector = '#btn-sync-from-github > img.loading'
+        await this.#goto(page, url, sync_selector)
+        await this.#click(page, sync_selector, [confirm_selector])
+        await Promise.all([
+          page.waitForSelector(loading_selector),
+          page.evaluateHandle(() => {
+            const confirm = document.querySelector(
+              '#modal-sync-from-github > .actions > .orange.ok',
+            ) as HTMLDivElement | null
+            if (confirm) confirm.click()
+          }),
+        ])
+        info(`"${repo}" synced`)
+      } finally {
+        this.#count--
+        await page.close().catch()
+        const task = this.#tasks.shift()
+        if (task) {
+          task()
+        }
       }
-    } finally {
-      this.#count--
-      const task = this.#tasks.shift()
-      if (task) {
-        task()
-      }
-      await page.close().catch()
-    }
+    }, `"${repo}" sync failed`)
   }
 
   async close() {
