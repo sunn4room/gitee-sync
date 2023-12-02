@@ -3,7 +3,7 @@ import { HttpClient } from '@actions/http-client'
 import { Browser, Page } from 'puppeteer'
 
 async function retry<T>(fn: () => Promise<T>, err: string): Promise<T> {
-  for (let i = 0; i < 5; i ++) {
+  for (let i = 0; i < 5; i++) {
     try {
       return await fn()
     } catch {
@@ -147,19 +147,22 @@ function get_client(): HttpClient {
 export async function* get_org_repos(org: string, token: string = '') {
   let count = 1
   while (true) {
-    const result = await get_client().get(
-      `https://gitee.com/api/v5/orgs/${org}/repos?type=all&per_page=100&page=${count}${
-        token ? '&access_token=' + token : ''
-      }`,
-      {
-        'content-type': 'application/json',
-        charset: 'UTF-8',
-      },
-    )
-    if (!result.message.statusCode || result.message.statusCode >= 400) {
-      break
-    }
-    const data: Array<{ path: string }> = JSON.parse(await result.readBody())
+    const response = await retry(async () => {
+      const response = await get_client().get(
+        `https://gitee.com/api/v5/orgs/${org}/repos?type=all&per_page=100&page=${count}${
+          token ? '&access_token=' + token : ''
+        }`,
+        {
+          'content-type': 'application/json',
+          charset: 'UTF-8',
+        },
+      )
+      if (!response.message.statusCode || response.message.statusCode >= 400) {
+        throw new Error()
+      }
+      return response
+    }, `Cannot get org repos "${org}" ${count} page`)
+    const data: Array<{ path: string }> = JSON.parse(await response.readBody())
     if (data.length == 0) {
       break
     } else {

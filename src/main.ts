@@ -33,10 +33,14 @@ export default async function (): Promise<void> {
         if (repo.indexOf('/') >= 0) {
           promises.push(gitee.sync(repo).catch((e: unknown) => handle_error(e)))
         } else {
-          for await (const org_repo of get_org_repos(repo, token)) {
-            promises.push(
-              gitee.sync(org_repo).catch((e: unknown) => handle_error(e)),
-            )
+          try {
+            for await (const org_repo of get_org_repos(repo, token)) {
+              promises.push(
+                gitee.sync(org_repo).catch((e: unknown) => handle_error(e)),
+              )
+            }
+          } catch (e) {
+            handle_error(e)
           }
         }
       }
