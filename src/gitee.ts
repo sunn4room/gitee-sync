@@ -72,11 +72,10 @@ export class Gitee {
         const sync_selector = '#btn-sync-from-github'
         const confirm_selector =
           '#modal-sync-from-github > .actions > .orange.ok'
-        const loading_selector = '#btn-sync-from-github > img.loading'
         await this.#goto(page, url, sync_selector)
         await this.#click(page, sync_selector, [confirm_selector])
         await Promise.all([
-          page.waitForSelector(loading_selector),
+          page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
           page.evaluateHandle(() => {
             const confirm = document.querySelector(
               '#modal-sync-from-github > .actions > .orange.ok',

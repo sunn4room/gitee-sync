@@ -23,7 +23,7 @@ export default async function (): Promise<void> {
     }).catch(() => {
       throw new Error('Cannot launch browser')
     })
-    const gitee = new Gitee(browser)
+    const gitee = new Gitee(browser, 10)
 
     try {
       await gitee.init(username, password)
