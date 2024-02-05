@@ -3,7 +3,7 @@ import { HttpClient } from '@actions/http-client'
 import { Browser, Page } from 'puppeteer'
 
 async function retry<T>(fn: () => Promise<T>, err: string): Promise<T> {
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < 5; i++) {
     try {
       return await fn()
     } catch {
@@ -114,7 +114,7 @@ export class Gitee {
         promises.push(page.waitForSelector(selector))
       }
     } else {
-      promises.push(page.waitForNavigation({ waitUntil: 'domcontentloaded' }))
+      promises.push(page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 120000 }))
     }
     promises.push(page.click(selector))
     await Promise.all(promises)
