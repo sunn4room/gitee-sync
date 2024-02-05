@@ -3,7 +3,7 @@ import { HttpClient } from '@actions/http-client'
 import { Browser, Page } from 'puppeteer'
 
 async function retry<T>(fn: () => Promise<T>, err: string): Promise<T> {
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 2; i++) {
     try {
       return await fn()
     } catch {
@@ -75,7 +75,7 @@ export class Gitee {
         await this.#goto(page, url, sync_selector)
         await this.#click(page, sync_selector, [confirm_selector])
         await Promise.all([
-          page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+          page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 600000 }),
           page.evaluateHandle(() => {
             const confirm = document.querySelector(
               '#modal-sync-from-github > .actions > .orange.ok',
