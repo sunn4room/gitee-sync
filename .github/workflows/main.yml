@@ -16,4 +16,4 @@ jobs:
           username: sunn4room
           password: ${{ secrets.PASSWORD }}
           repositories: |
-            sunn4github
+            sunn4mirror

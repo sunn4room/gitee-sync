@@ -75,7 +75,7 @@ export class Gitee {
         await this.#goto(page, url, sync_selector)
         await this.#click(page, sync_selector, [confirm_selector])
         await Promise.all([
-          page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 600000 }),
+          new Promise((resolve) => setTimeout(resolve, 2000)),
           page.evaluateHandle(() => {
             const confirm = document.querySelector(
               '#modal-sync-from-github > .actions > .orange.ok',
@@ -114,7 +114,12 @@ export class Gitee {
         promises.push(page.waitForSelector(selector))
       }
     } else {
-      promises.push(page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 120000 }))
+      promises.push(
+        page.waitForNavigation({
+          waitUntil: 'domcontentloaded',
+          timeout: 120000,
+        }),
+      )
     }
     promises.push(page.click(selector))
     await Promise.all(promises)
